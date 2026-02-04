@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: incident-detector
+  namespace: demo-aiops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: incident-detector
+  template:
+    metadata:
+      labels:
+        app: incident-detector
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: incident-detector
+          image: your-registry/incident-detector:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NAMESPACE
+              value: demo-aiops
+            - name: TARGET_DEPLOYMENT
+              value: payments-api
+            - name: LOKI_URL
+              value: http://loki-gateway.loki.svc.cluster.local
+            - name: ERROR_THRESHOLD
+              value: "5"
+            - name: ROLL_OUT_WINDOW_MINUTES
+              value: "10"
+            - name: POLL_INTERVAL_SECONDS
+              value: "20"
+            - name: LOKI_LABEL_APP
+              value: payments-api
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: slack-webhook
+                  key: url
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
